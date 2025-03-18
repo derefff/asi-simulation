@@ -2,7 +2,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-// #include "raylib.h" // maybe I'll use it for visualization et.c
 
 // change with spin.value
 //  enum spinDirection{
@@ -12,11 +11,11 @@
 struct spin
 {
   int id;
-  int x, y;  // "position of spin" for now idk if neccesery
+  int x, y;  // "position of spin" for now idk if neccesary
   int value; //+1 or -1, if isVertical then +1 up and -1 down, if !isVertical +1 right, -1 left
   bool isVertical;
   // near neighbour liek list
-  //  spinDirection direction;
+  // spinDirection direction;
 };
 
 struct lattice
@@ -32,15 +31,21 @@ spin** generate_spins(int L)
   spin** spins = (spin**)malloc(sizeof(spin) * L);
   for (int col = 0; col < L; col++)
     spins[col] = (spin*)malloc(sizeof(spin) * L);
+
   int spin_id = 0;
   for (int i = 0; i < L; i++)
   {
-    // define spin id
-    spins[i]->id = spin_id;
-    // vertical-> i%2 = 1
-    spins[i]->isVertical = (i % 2 == 0) ? false : true;
-    // assign spin random orientation (+1 or -1)
-    spins[i]->value = -1 + 2 * (rand() % 2);
+    for (int j = 0; j < L; j++)
+    {
+      // define spin id
+      spins[i][j].id = spin_id;
+      // vertical-> i%2 = 1
+      spins[i][j].isVertical = (j % 2 == 0) ? false : true;
+      // assign spin random orientation (+1 or -1)
+      spins[i][j].value = -1 + 2 * (rand() % 2);
+    }
+
+    spin_id++;
   }
 
   return spins;
@@ -60,6 +65,7 @@ lattice* create_lattice(int L)
 
 int main(int argc, char* argv[])
 {
+  const int L = 4;
   // Create simulation board
   lattice* board = create_lattice(L);
 
