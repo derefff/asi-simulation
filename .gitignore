@@ -1,5 +1,7 @@
 main
-asimulation
+asimulation*
+test.cpp
+
 raylib/
 
 *.png
