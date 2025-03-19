@@ -3,49 +3,54 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// change with spin.value
-//  enum spinDirection{
-//    UP, DOWN, RIGHT, LEFT
-//  };
+// Boltzman constant
+// what's that? cpp shenanigans I see
+constexpr double Kb = 1.380649e-23;
 
 struct spin
 {
   int id;
-  int x, y;  // "position of spin" for now idk if neccesary
-  int value; //+1 or -1, if isVertical then +1 up and -1 down, if !isVertical +1 right, -1 left
+  int x, y; // "position of spin" for now idk if neccesary
+  //+1 or -1, if isVertical then +1 up and -1 down, if !isVertical +1 right, -1 left
+  int value;
   bool isVertical;
-  // near neighbour liek list
-  // spinDirection direction;
+  // near neighbour like list
+  spin* neighbourList;
 };
 
 struct lattice
 {
   int width;  // cells unit
   int height; // cells unit
-  spin** spins;
+  spin* spins;
 };
 
-spin** generate_spins(int L)
+spin* generate_spins(int L)
 {
-  // two dimmensional table
-  spin** spins = (spin**)malloc(sizeof(spin) * L);
-  for (int col = 0; col < L; col++)
-    spins[col] = (spin*)malloc(sizeof(spin) * L);
+  // one dimmensional table
+  spin* spins = (spin*)malloc(sizeof(spin) * (L * L));
 
   int spin_id = 0;
-  for (int i = 0; i < L; i++)
+
+  for (int i = 0; i < L * L; i++)
   {
-    for (int j = 0; j < L; j++)
-    {
-      // define spin id
-      spins[i][j].id = spin_id;
-      // vertical-> i%2 = 1
-      spins[i][j].isVertical = (j % 2 == 0) ? false : true;
-      // assign spin random orientation (+1 or -1)
-      spins[i][j].value = -1 + 2 * (rand() % 2);
-    }
+    // define spin id
+    spins[i].id = spin_id;
+    // vertical-> i%2 = 1
+    spins[i].isVertical = (i % 2 == 0) ? false : true;
+    // assign spin random orientation (+1 or -1)
+    spins[i].value = -1 + 2 * (rand() % 2);
 
     spin_id++;
+  }
+
+  // generate near neighbour list for each spin
+  for (int j = 0; j < L * L; j++)
+  {
+    int row = j / L;      // y
+    int column = (j % L); // x
+
+    // std::cout << row << "," << column << "\n"; //debug info
   }
 
   return spins;
@@ -102,37 +107,3 @@ int main(int argc, char* argv[])
 // 7. Finalize simulation
 // a) Save the final state
 // b) Close files / free memory
-
-// if(argc>1 && std::string_view(argv[1]) == "--gui")
-// {
-// std::cout<<"guiversion\n";
-// //--------------------------------------------------DRAWING
-// const int WindowWidth = 600;
-// const int WindowHeight= 600;
-// InitWindow(WindowWidth, WindowHeight, "ASImulation Graphical Interface");
-
-// double x_scale = 600.f/board->width;
-// double y_scale = 600.f/board->height;
-
-// SetTargetFPS(60);
-
-// while (!WindowShouldClose())
-// {
-//     BeginDrawing();
-//     ClearBackground(RAYWHITE);
-
-//     for(int i = 0; i < board->width;i ++)
-//     {
-//       DrawLine(0, y_scale*i, WindowWidth, y_scale*i, BLACK);
-//       DrawLine(x_scale*i, 0, x_scale*i,WindowHeight, BLACK);
-//       for(int j = 0; j < board->height;j ++)
-//       {
-//         DrawLineEx({5,10}, {x_scale-5,10}, 5.f, BLACK);
-//       }
-//     }
-
-//     EndDrawing();
-// }
-// CloseWindow();
-// }
-// //--------------------------------------------------END-DRAWING
