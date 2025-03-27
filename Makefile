@@ -1,7 +1,5 @@
 CC=g++
-LPATH=./raylib/lib
-IPATH=./raylib/include
-libs=-lm -l:libraylib.a -g
+libs=-lm -g
 flags=-std=c++17 -Wall -Wextra
 debug_options=-g -DDEBUG
 target=main.cpp
