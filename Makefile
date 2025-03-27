@@ -8,7 +8,7 @@ name=asimulation
 CFLAGS = -I$(IPATH) -L$(LPATH)
 
 all:
-	$(CC) $(target) -I$(IPATH) -L$(LPATH) -o $(name) $(libs)
+	$(CC) $(target) -o $(name) $(libs)
 
 clang:
 	clang++ $(target) $(CFLAGS) -o $(name) $(libs) $(libs)
@@ -17,7 +17,6 @@ clang:
 debug:
 	$(CC) $(target) -I$(IPATH) -L$(LPATH) -o $(name)_debug $(libs) $(debug_options)
 
-# compile version without visualization (raylib)
 min:
 	$(CC) $(target) -o $(name)_min $(flags)
 
