@@ -2,7 +2,7 @@ CC=g++
 libs=-lm -g
 flags=-std=c++17 -Wall -Wextra
 debug_options=-g -DDEBUG
-target=main.cpp
+target=main.cpp ./utils/vector.cpp
 name=asimulation
 
 CFLAGS = -I$(IPATH) -L$(LPATH)
