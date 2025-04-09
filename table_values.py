@@ -3,10 +3,9 @@ from itertools import product
 
 L = 4  # rozmiar sieci 4x4
 
-# Tworzymy wszystkie 2^16 możliwe konfiguracje spinów (+1 / -1)
+# tworzenie wszystkich konfiguracji spinów (+1 / -1)
 all_configs = list(product([-1, 1], repeat=L * L))
 
-# Funkcje pomocnicze
 def get_spin(config, x, y):
     return config[y * L + x]
 
@@ -51,7 +50,7 @@ def calculate_energy(config, J1, J2):
                 E -= J2 * spin * left_down
                 E -= J2 * spin * right_down
 
-    return E / 2
+    return E / 2 # bo oddziaływania spinow np. 1 - 2, 2 - 1 sa liczone dwa razy 
 
 def calculate_magnetization(config):
     mx, my = 0, 0
@@ -64,7 +63,6 @@ def calculate_magnetization(config):
                 my += spin
     return mx, my
 
-# Przykładowe obliczenia
 data = []
 J1 = 1.0
 J2 = 0.5
@@ -78,14 +76,14 @@ for config in all_configs:
 
 Z = sum(weight for _, _, _, _, weight in data)
 
-# Zapisz dane do pliku
+# zapisywanie wartosci do pliku
 with open("config_data.txt", "w") as f:
-    f.write("config E mx my weight Z\n")  # Nagłówek
+    f.write("config E mx my weight Z\n")  # nagłówek
     for config, E, mx, my, weight in data:
         config_str = " ".join(map(str, config))
         f.write(f"{config_str} {E:.6f} {mx} {my} {weight:.6e} {Z:.6e}\n")
 
-# Średnie wartości
+# srednie wartosci
 avg_mx = sum(mx * w for _, _, mx, _, w in data) / Z
 avg_my = sum(my * w for _, _, _, my, w in data) / Z
 
