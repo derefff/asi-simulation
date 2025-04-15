@@ -22,11 +22,22 @@ struct spin
   int neighbourListIndex_J2[4];
 };
 
+struct vertex
+{
+  int id;
+  int spinIndices[4];
+  int neighborIndices[4]; // [0]=up, [1]=right, [2]=bottom, [3]=left
+  int type;
+  int monopoleCharge;
+  double energy;
+};
+
 struct lattice
 {
   int width;  // cells unit
   int height; // cells unit
   spin* spins;
+  vertex* vertices;
 };
 
 spin* generate_spins(int L)
@@ -86,6 +97,63 @@ spin* generate_spins(int L)
   return spins;
 }
 
+vertex* generate_vertex(int L, spin* spins)
+{
+  int num_vertices = L * L;
+  vertex* vertices = (vertex*)malloc(sizeof(vertex) * num_vertices);
+
+  for (int i = 0; i < num_vertices; i++)
+  {
+    int row = i / L;
+    int col = i % L;
+
+    vertex v;
+    v.id = i;
+
+    // top, left, bottom, right
+
+    int top_spin_index = ((row == 0) ? (L - 1) : row - 1) * L + col;
+    int bottom_spin_index = row * L + col;
+
+    int left_spin_index = row * L + ((col == 0) ? (L - 1) : col - 1);
+    int right_spin_index = row * L + col;
+
+    // vertical spins -> (i % 2 == 1), horizontal have odd index
+
+    // vertical neighbors
+    while (!spins[top_spin_index].isVertical)
+      top_spin_index = (top_spin_index + 1) % (L * L);
+
+    while (!spins[bottom_spin_index].isVertical)
+      bottom_spin_index = (bottom_spin_index + 1) % (L * L);
+
+    // horziontal neighbors
+    while (spins[left_spin_index].isVertical)
+      left_spin_index = (left_spin_index + 1) % (L * L);
+
+    while (spins[right_spin_index].isVertical)
+      right_spin_index = (right_spin_index + 1) % (L * L);
+
+    v.spinIndices[0] = top_spin_index;
+    v.spinIndices[1] = left_spin_index;
+    v.spinIndices[2] = bottom_spin_index;
+    v.spinIndices[3] = right_spin_index;
+
+    // neihborVvertex
+    for (int d = 0; d < 4; d++)
+      v.neighborIndices[d] = -1;
+
+    // placeholders
+    v.type = -1;
+    v.monopoleCharge = 0;
+    v.energy = 0.0;
+
+    vertices[i] = v;
+  }
+
+  return vertices;
+}
+
 lattice* create_lattice(int L)
 {
   lattice* lat = (lattice*)malloc(sizeof(lattice));
@@ -95,7 +163,58 @@ lattice* create_lattice(int L)
   // Generate spins in a structured grid
   // Store spins in data structure
   lat->spins = generate_spins(L);
+  lat->vertices = generate_vertex(L, lat->spins);
   return lat;
+}
+
+void update_vertices(vertex* vertices, spin* spins, int num_vertices, double J1, double J2)
+{
+  for (int i = 0; i < num_vertices; i++)
+  {
+    vertex* v = &vertices[i];
+
+    // take those 4 spins
+    int s[4];
+    for (int k = 0; k < 4; k++)
+      s[k] = spins[v->spinIndices[k]].value;
+
+    // spins sum -> monopole charge
+    int sum = s[0] + s[1] + s[2] + s[3];
+    v->monopoleCharge = sum;
+
+    // vertex type
+    switch (abs(sum))
+    {
+    case 0:
+      // type I (2 in, 2 out)
+      v->type = 1;
+      break;
+    case 2:
+      // type II (3 in / 1 out)
+      v->type = 2;
+      break;
+    case 4:
+      // type III (4 in or 4 out)
+      v->type = 3;
+      break;
+    default:
+      // error or unknown
+      v->type = -1;
+      break;
+    }
+
+    // local energy ... not sure if correct
+    v->energy = -J1 * (s[0] * s[2] + s[1] * s[3]) - J2 * (s[0] * s[1] + s[0] * s[3] + s[2] * s[1] + s[2] * s[3]);
+  }
+}
+
+int count_monopoles(vertex* vertices, int num_vertices)
+{
+  int count = 0;
+  for (int i = 0; i < num_vertices; i++)
+    if (abs(vertices[i].monopoleCharge) > 0)
+      count++;
+  return count;
 }
 
 // previously there was T in argument
@@ -143,39 +262,81 @@ physics::vector* compute_magnetization(lattice* lat)
 
 int main(int argc, char* argv[])
 {
-
-  const int L = 50;
+  const int L = 40;
   const double J1 = 1.0;
   const double J2 = 1.0;
   const double T = 1.8;
+  const int steps = 10'000;
+  // const int equil_steps = 5000; // termalizacja?
+  // const int samples = steps - equil_steps; // steps -> smples
 
-  // external field B(x,y)
-  physics::vector* B = physics::create_vector(0.0, 0.0);
-  // physics::vector* M = physics::create_vector(0.0, 0.0);
-
-  lattice* board = create_lattice(L);
-
-  std::ofstream outfile("magnetization_data.txt");
-  if (!outfile)
+  // Create output file for phase diagram
+  std::ofstream phase_file("phase_diagram.txt");
+  if (!phase_file)
   {
-    std::cerr << "Error opening file!" << std::endl;
+    std::cerr << "Error opening phase_diagram.txt!" << std::endl;
     return 1;
   }
 
-  // whole simulation should be from B(-1,-1) to B(1, 1)
+  // External field B(x,y)
+  physics::vector* B = physics::create_vector(0.0, 0.0);
 
-  for (int step = 0; step < 10'000; step++)
+  int total = 21 * 21;
+  int count = 0;
+
+  // Looping over B vector
+  for (B->x = -1.0; B->x <= 1.01; B->x += 0.1)
   {
-    glauber_step(board, J1, J2, T, B);
+    for (B->y = -1.0; B->y <= 1.01; B->y += 0.1)
+    {
 
-    // Total Magnetization
-    physics::vector* magnetization = compute_magnetization(board);
-    outfile << step << '\t' << magnetization->x << '\t' << magnetization->y << '\n';
+      // Create fresh lattice for each B
+      lattice* board = create_lattice(L);
+
+      // run simulaation
+      for (int step = 0; step < steps; step++)
+      {
+        glauber_step(board, J1, J2, T, B);
+        update_vertices(board->vertices, board->spins, L * L, J1, J2);
+      }
+
+      double Mx = 0.0, My = 0.0;
+      int monopole_total = 0;
+
+      for (int step = 0; step < steps; step++)
+      {
+        glauber_step(board, J1, J2, T, B);
+        update_vertices(board->vertices, board->spins, L * L, J1, J2);
+
+        physics::vector* M = compute_magnetization(board);
+        Mx += M->x;
+        My += M->y;
+
+        monopole_total += count_monopoles(board->vertices, L * L);
+      }
+
+      // avg variables
+      double avg_Mx = Mx / steps;
+      double avg_My = My / steps;
+      double avg_monopole_density = (double)monopole_total / (steps * L * L);
+
+      // save to phase_diagram.txt file
+      phase_file << B->x << '\t' << B->y << '\t' << avg_Mx << '\t' << avg_My << '\t' << avg_monopole_density << '\n';
+
+      count++;
+      int progress = (100 * count) / total;
+      std::cout << "\rProgress: " << progress << "%     " << std::flush;
+
+      // Free memory for this run
+      free(board->spins);
+      free(board->vertices);
+      free(board);
+    }
+    phase_file << "\n";
   }
 
-  outfile.close();
-  // std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
-  //
+  phase_file.close();
+  std::cout << "Phase diagram data saved to phase_diagram.txt" << std::endl;
   return 0;
 }
 
@@ -190,10 +351,3 @@ int main(int argc, char* argv[])
 // //waga z rozkladu boltmzana -> prawdopodobienstwo mikrostanu
 // zastanowic sie co robia oddzialywania (samo j1 lub sammo j2) -> jeden z podrozdzialow
 
-// 6. Visualization (optional)
-// a) Output the spin configurations at different time steps
-// b) Generate heatmaps / graphs of magnetization / energy
-
-// 7. Finalize simulation
-// a) Save the final state
-// b) Close files / free memory
