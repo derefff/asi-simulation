@@ -11,7 +11,7 @@ all:
 	$(CC) $(target) -o $(name) $(libs)
 
 clang:
-	clang++ $(target) $(CFLAGS) -o $(name) $(libs) $(libs)
+	clang++ $(target) $(CFLAGS) -o $(name) $(libs) -O3
 
 # debug compilation
 debug:
