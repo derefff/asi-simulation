@@ -98,7 +98,8 @@ lattice* create_lattice(int L)
   return lat;
 }
 
-double compute_energy_difference(lattice* lat, int spin_index, double J1, double J2, double T)
+// previously there was T in argument
+double compute_energy_difference(lattice* lat, int spin_index, double J1, double J2, physics::vector* B)
 {
   spin s = lat->spins[spin_index];
   // int sum_neighbors = 0;
@@ -110,14 +111,16 @@ double compute_energy_difference(lattice* lat, int spin_index, double J1, double
   for (int i = 0; i < 4; i++)
     sum_J2 += lat->spins[s.neighbourListIndex_J2[i]].value;
 
-  return 2 * s.value * (J1 * sum_J1 + J2 * sum_J2);
+  double field = s.isVertical ? B->y : B->x;
+
+  return 2 * s.value * (J1 * sum_J1 + J2 * sum_J2 + field);
 }
 
-void glauber_step(lattice* lat, double J1, double J2, double T)
+void glauber_step(lattice* lat, double J1, double J2, double T, physics::vector* B)
 {
   int random_spin = rand() % (lat->width * lat->height - 1);
 
-  double dE = compute_energy_difference(lat, random_spin, J1, J2, T);
+  double dE = compute_energy_difference(lat, random_spin, J1, J2, B);
   if (dE < 0 || exp(-dE / (Kb * T)) > ((double)rand() / RAND_MAX))
     lat->spins[random_spin].value *= -1;
 }
@@ -159,9 +162,11 @@ int main(int argc, char* argv[])
     return 1;
   }
 
+  // whole simulation should be from B(-1,-1) to B(1, 1)
+
   for (int step = 0; step < 10'000; step++)
   {
-    glauber_step(board, J1, J2, T);
+    glauber_step(board, J1, J2, T, B);
 
     // Total Magnetization
     physics::vector* magnetization = compute_magnetization(board);
@@ -184,30 +189,6 @@ int main(int argc, char* argv[])
 //
 // //waga z rozkladu boltmzana -> prawdopodobienstwo mikrostanu
 // zastanowic sie co robia oddzialywania (samo j1 lub sammo j2) -> jeden z podrozdzialow
-
-// 1. Create simulation board
-// a) Define board size (NxN)
-// b) Generate spins in a structured grid
-// c) Store spins in data structure
-
-// 2. Initialize spins
-// a) Assign each spin a random orientation (+1 or -1)
-// b) Optionally: Implement different initial states (random, ordered, etc.)
-// 2.1. Make neighbor list
-// a) Identify nearest neighbors (J1 interactions)
-// b) Identify next-nearest neighbors (J2 interactions)
-// c) Store neighbor relationships efficiently (e.g., adjacency list, array indices)
-
-// 4. Simulation loop
-// a) Pick a random spin
-// b) Compute energy difference ΔE using Glauber algorithm
-// c) Decide whether to flip the spin (using probability function)
-// d) Repeat for a fixed number of Monte Carlo steps
-
-// 5. Data collection & analysis
-// a) Measure total system energy at intervals
-// b) Track monopole density / correlation functions
-// c) Store results in a file for plotting
 
 // 6. Visualization (optional)
 // a) Output the spin configurations at different time steps
