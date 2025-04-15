@@ -3,17 +3,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
+#include "utils/vector.h"
 
 // Boltzman constant
 // what's that? cpp shenanigans I see
-constexpr double Kb = 1.380649e-23;
+//constexpr double Kb = 1.380649e-23;
+constexpr double Kb = 1;
 
 struct spin
 {
   int id;
-  int x, y; // "position of spin" for now idk if neccesary
+  // int x, y; // "position of spin" for now idk if neccesary
   //+1 or -1, if isVertical then +1 up and -1 down, if !isVertical +1 right, -1 left
-  int value;
+  int value; // potentialy use here vector
   bool isVertical;
   // near neighbour like list
   int neighbourListIndex_J1[2];
@@ -38,12 +40,12 @@ spin* generate_spins(int L)
   {
     // define spin id
     // spins[i].id = spin_id;
+    // spin_id++;
     // vertical-> i%2 = 1
     spins[i].isVertical = (i % 2 == 0) ? false : true;
     // assign spin random orientation (+1 or -1)
     spins[i].value = -1 + 2 * (rand() % 2);
 
-    // spin_id++;
   }
 
   // generate near neighbour list for each spin
@@ -97,60 +99,92 @@ lattice* create_lattice(int L)
   return lat;
 }
 
-double compute_energy_difference(lattice* lat, int spin_index, double J, double T)
+double compute_energy_difference(lattice* lat, int spin_index, double J1, double J2, double T)
 {
   spin s = lat->spins[spin_index];
-  int sum_neighbors = 0;
-  for (int i = 0; i < 2; i++)
-    sum_neighbors += lat->spins[s.neighbourListIndex_J1[i]].value;
-  for (int i = 0; i < 4; i++)
-    sum_neighbors += lat->spins[s.neighbourListIndex_J2[i]].value;
+  // int sum_neighbors = 0;
+  int sum_J1 = 0;
+  int sum_J2 = 0;
 
-  return 2 * J * s.value * sum_neighbors;
+  for (int i = 0; i < 2; i++)
+    sum_J1 += lat->spins[s.neighbourListIndex_J1[i]].value;
+  for (int i = 0; i < 4; i++)
+    sum_J2 += lat->spins[s.neighbourListIndex_J2[i]].value;
+
+  return 2 * s.value * (J1 * sum_J1 + J2 * sum_J2);
 }
 
-void glauber_step(lattice* lat, double J, double T)
+void glauber_step(lattice* lat, double J1, double J2, double T)
 {
   int random_spin = rand() % (lat->width * lat->height-1);
 
-  double dE = compute_energy_difference(lat, random_spin, J, T);
+  double dE = compute_energy_difference(lat, random_spin, J1, J2, T);
   if (dE < 0 || exp(-dE / (Kb * T)) > ((double)rand() / RAND_MAX))
     lat->spins[random_spin].value *= -1;
 }
 
-double compute_magnetization(lattice* lat)
+//to musi być wektor
+//tutaj licze wersje uśrednioną
+physics::vector* compute_magnetization(lattice* lat)
 {
+  physics::vector* M = physics::create_vector(0.0, 0.0);
+
   int total_spin = 0;
   int num_spins = lat->width * lat->height;
   for (int i = 0; i < num_spins; i++)
-    total_spin += lat->spins[i].value;
-  return (double)total_spin / num_spins;
+  {
+    if(lat->spins[i].isVertical) M->y += lat->spins[i].value;
+    else M->x += lat->spins[i].value;
+  }
+    // total_spin += lat->spins[i].value;
+  return M;
 }
 
 int main(int argc, char* argv[])
 {
-  const int L = 70;
-  const double J = 1.0;
-  const double T = 1.8;
-  lattice* board = create_lattice(L);
-  
-  std::ofstream outfile("magnetization_data.txt");
-  if (!outfile) {
-    std::cerr << "Error opening file!" << std::endl;
-    return 1;
-  }
-  
-  for (int step = 0; step < 10'000; step++) {
-    glauber_step(board, J, T);
-    double magnetization = compute_magnetization(board);
-    outfile << step << " " << magnetization << std::endl;
-  }
-  
-  outfile.close();
-  std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
-  
+
+ const int L = 50;
+ const double J1 = 1.0;
+ const double J2 = 1.0;
+ const double T = 1.8;
+
+ // external field B(x,y)
+ physics::vector* B = physics::create_vector(0.0, 0.0);
+ // physics::vector* M = physics::create_vector(0.0, 0.0);
+
+
+ lattice* board = create_lattice(L);
+
+ std::ofstream outfile("magnetization_data.txt");
+ if (!outfile) {
+   std::cerr << "Error opening file!" << std::endl;
+   return 1;
+ }
+
+ for (int step = 0; step < 10'000; step++) {
+   glauber_step(board, J1,J2, T);
+
+   // Total Magnetization
+   physics::vector* magnetization = compute_magnetization(board);
+   outfile << step << " " << magnetization->x<< magnetization->y << '\n';
+ }
+
+ outfile.close();
+ // std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
+ //
   return 0;
 }
+
+// policzyc osobno magnetyzacje spinow na x i y
+// wprowadz bx i by/ sprawdz oddzialkywanie
+//
+// inny program: znajdz przypadek testowy
+// dla sieci L = 4
+// znajdz wszystkie konfiguracje 2^16 -> 65000
+// wyrysuje je z rozkladu boltzmana
+//
+// //waga z rozkladu boltmzana -> prawdopodobienstwo mikrostanu
+// zastanowic sie co robia oddzialywania (samo j1 lub sammo j2) -> jeden z podrozdzialow
 
 // 1. Create simulation board
 // a) Define board size (NxN)
