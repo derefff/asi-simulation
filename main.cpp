@@ -1,13 +1,13 @@
+#include "utils/vector.h"
+#include <fstream>
 #include <iostream>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fstream>
-#include "utils/vector.h"
 
 // Boltzman constant
 // what's that? cpp shenanigans I see
-//constexpr double Kb = 1.380649e-23;
+// constexpr double Kb = 1.380649e-23;
 constexpr double Kb = 1;
 
 struct spin
@@ -45,7 +45,6 @@ spin* generate_spins(int L)
     spins[i].isVertical = (i % 2 == 0) ? false : true;
     // assign spin random orientation (+1 or -1)
     spins[i].value = -1 + 2 * (rand() % 2);
-
   }
 
   // generate near neighbour list for each spin
@@ -116,15 +115,13 @@ double compute_energy_difference(lattice* lat, int spin_index, double J1, double
 
 void glauber_step(lattice* lat, double J1, double J2, double T)
 {
-  int random_spin = rand() % (lat->width * lat->height-1);
+  int random_spin = rand() % (lat->width * lat->height - 1);
 
   double dE = compute_energy_difference(lat, random_spin, J1, J2, T);
   if (dE < 0 || exp(-dE / (Kb * T)) > ((double)rand() / RAND_MAX))
     lat->spins[random_spin].value *= -1;
 }
 
-//to musi być wektor
-//tutaj licze wersje uśrednioną
 physics::vector* compute_magnetization(lattice* lat)
 {
   physics::vector* M = physics::create_vector(0.0, 0.0);
@@ -133,45 +130,47 @@ physics::vector* compute_magnetization(lattice* lat)
   int num_spins = lat->width * lat->height;
   for (int i = 0; i < num_spins; i++)
   {
-    if(lat->spins[i].isVertical) M->y += lat->spins[i].value;
-    else M->x += lat->spins[i].value;
+    if (lat->spins[i].isVertical)
+      M->y += lat->spins[i].value;
+    else
+      M->x += lat->spins[i].value;
   }
-    // total_spin += lat->spins[i].value;
   return M;
 }
 
 int main(int argc, char* argv[])
 {
 
- const int L = 50;
- const double J1 = 1.0;
- const double J2 = 1.0;
- const double T = 1.8;
+  const int L = 50;
+  const double J1 = 1.0;
+  const double J2 = 1.0;
+  const double T = 1.8;
 
- // external field B(x,y)
- physics::vector* B = physics::create_vector(0.0, 0.0);
- // physics::vector* M = physics::create_vector(0.0, 0.0);
+  // external field B(x,y)
+  physics::vector* B = physics::create_vector(0.0, 0.0);
+  // physics::vector* M = physics::create_vector(0.0, 0.0);
 
+  lattice* board = create_lattice(L);
 
- lattice* board = create_lattice(L);
+  std::ofstream outfile("magnetization_data.txt");
+  if (!outfile)
+  {
+    std::cerr << "Error opening file!" << std::endl;
+    return 1;
+  }
 
- std::ofstream outfile("magnetization_data.txt");
- if (!outfile) {
-   std::cerr << "Error opening file!" << std::endl;
-   return 1;
- }
+  for (int step = 0; step < 10'000; step++)
+  {
+    glauber_step(board, J1, J2, T);
 
- for (int step = 0; step < 10'000; step++) {
-   glauber_step(board, J1,J2, T);
+    // Total Magnetization
+    physics::vector* magnetization = compute_magnetization(board);
+    outfile << step << '\t' << magnetization->x << '\t' << magnetization->y << '\n';
+  }
 
-   // Total Magnetization
-   physics::vector* magnetization = compute_magnetization(board);
-   outfile << step << " " << magnetization->x<< magnetization->y << '\n';
- }
-
- outfile.close();
- // std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
- //
+  outfile.close();
+  // std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
+  //
   return 0;
 }
 
