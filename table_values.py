@@ -8,10 +8,6 @@ from itertools import product
 #
 
 #poprawki
-# 1. są dwie podsieci pion i poziom
-# ze względu na zapis spinów w jednej tablicy (poziom-pion-poziom-pion)
-# wymiar LxL naprawdę to (2L)xL żeby wymiar sie zgadzał
-
 #2. sprawdz is_horizontal bo chyba jest tam zły warunek
 
 #3. J1 i J2 chyba pomyliłem oddziaływania powinienem zrobić zamiane
@@ -27,10 +23,13 @@ from itertools import product
 #7. wyrysowanie temp dla kilku $\beta$ ? (jeszcze sie dopytam)
 
 
+# 1. są dwie podsieci pion i poziom
+# ze względu na zapis spinów w jednej tablicy [ poziom, pion, poziom, pion,... ]
+# wymiar LxL naprawdę to (2L)xL żeby wymiar sie zgadzał
 L = 4  # rozmiar sieci 4x4 -> 8x4
 
 # tworzenie wszystkich konfiguracji spinów (+1 / -1)
-all_configs = list(product([-1, 1], repeat=L * L))
+all_configs = list(product([-1, 1], repeat=(2*L) * L))
 
 def get_spin(config, x, y):
     return config[y * L + x]
