@@ -25,6 +25,8 @@ from itertools import product
 # ze względu na zapis spinów w jednej tablicy [ poziom, pion, poziom, pion,... ]
 # wymiar LxL naprawdę to (2L)xL żeby wymiar sie zgadzał
 L = 3
+Ly = L
+Lx = 2*L
 total_cells = 2*L*L
 
 print(f"Generating {2 ** (2 * L * L) } configurations")
@@ -38,138 +40,104 @@ print(f"Generating {2 ** (2 * L * L) } configurations")
 all_configs = list(product([-1, 1], repeat=total_cells)) # to można stosować dla L = 3 i można rysować z kodem
 
 
-def get_spin(config, x, y):
-    x = x % (2 * L)
-    y = y % L
-    return config[y * (2 * L) + x]
+def coord_to_index(x,y):
+  return y * Lx + x
 
-# jako argument należy wstawiać indeks w postaci: i +- 2 * L
-def periodic_y(i):
-  return i % (2 * L * L)
+def periodic_x_ByIndex(i):
+  return (i + Lx) % Lx # L=3, i-> 0-2: (-2 + 6) % 6 = 4 % 6 = 4
 
-# jako argument należy wstawiać indeks w postaci: i +- 2 * L
-def periodic_x(i):
-  return (i // (2 * L)) * (2 * L) + (i % (2 * L))
+def periodic_x(x,n): # by x coordinate
+  if n > 0:
+    return (x + 2) % Lx
+  else:
+    return (x - 2 + Lx) % Lx
+
+def periodic_y(y,n): # by coordinate
+  if n < 0:
+    return (y + 2) % Ly
+  else:
+    return (y - 2 +Ly) % Ly
 
 
 def calculate_energy(config, J1, J2):
-    E = 0
+  E = 0.0
 
-    for i in range(2*L*L):
-      if i % 2 == 0:
-        x = i % (2*L)
-        y = i // L
+  for spinIndex in range(total_cells):
+    if spinIndex % 2 == 0:
+      x = spinIndex % Lx
+      y = spinIndex // Ly
 
-        spin = get_spin(config, x, y)
-        left = get_spin(config, periodic_x(x - 2*L), y)
-        right = get_spin(config, periodic_x(x + 2*L), y)
+      spin = config[spinIndex]
+      left = config[periodic_x_ByIndex(spinIndex - 2)]
+      right = config[periodic_x_ByIndex(spinIndex + 2)]
+      E -= J2 * spin * left
+      E -= J2 * spin * right
 
-        E -= J2 * spin * left
-        E -= J2 * spin * right
-        # print(x,y)
-        up_left = get_spin(config, periodic_x(x - 2*L), periodic_y(y - 2 * L))
-        up_right = get_spin(config, periodic_x(x + 2*L), periodic_y(y - 2 * L))
-        down_left = get_spin(config, periodic_x(x - 2*L), periodic_y(y + 2 * L))
-        down_right = get_spin(config, periodic_x(x + 2*L), periodic_y(y + 2 * L))
+      # print(x,y)
+      up_left = config[coord_to_index(periodic_x(x,-2), periodic_y(y,2))]
+      up_right = config[coord_to_index(periodic_x(x,2), periodic_y(y,2))]
+      down_left = config[coord_to_index(periodic_x(x,-2), periodic_y(y,-2))]
+      down_right = config[coord_to_index(periodic_x(x,2), periodic_y(y,-2))]
 
-        E -= J1  * spin * up_left
-        E -= J1 * spin * up_right
-        E -= J1 * spin * down_left
-        E -= J1 * spin * down_right
-      else:
-        x = i % (2*L)
-        y = i // L
+      E -= J1 * spin * up_left
+      E -= J1 * spin * up_right
+      E -= J1 * spin * down_left
+      E -= J1 * spin * down_right
+    else:
+      x = spinIndex % Lx
+      y = spinIndex // Ly
 
-        spin = get_spin(config, x, y)
-        up = get_spin(config, x, periodic_y(y - 2 * L))
-        down = get_spin(config, x, periodic_y(y + 2 * L))
-        E -= J2 * spin * up
-        E -= J2 * spin * down
+      spin =  config[spinIndex]
+      up = config[coord_to_index(x, periodic_y(y,2))]
+      down = config[coord_to_index(x, periodic_y(y,-2))]
 
-        left_up = get_spin(config, periodic_x(x - 2 * L), periodic_y(y - 2 * L))
-        right_up = get_spin(config, periodic_x(x + 2 * L), periodic_y(y - 2 * L))
-        left_down = get_spin(config, periodic_x(x - 2 * L), periodic_y(y + 2 * L))
-        right_down = get_spin(config, periodic_x(x + 2 * L), periodic_y(y + 2 * L))
+      E -= J2 * spin * up
+      E -= J2 * spin * down
 
-        E -= J1 * spin * left_up
-        E -= J1 * spin * right_up
-        E -= J1 * spin * left_down
-        E -= J1 * spin * right_down
+      left_up = config[coord_to_index(periodic_x(x,-2), periodic_y(y,2))]
+      right_up = config[coord_to_index(periodic_x(x,2), periodic_y(y,2))]
+      left_down = config[coord_to_index(periodic_x(x,-2), periodic_y(y,-2))]
+      right_down = config[coord_to_index(periodic_x(x,2), periodic_y(y,-2))]
 
-    return E / 2 # bo oddziaływania spinow np. 1 - 2, 2 - 1 sa liczone dwa razy
+      E -= J1 * spin * left_up
+      E -= J1 * spin * right_up
+      E -= J1 * spin * left_down
+      E -= J1 * spin * right_down
 
-# def calculate_energy(config, J1, J2):
-#     E = 0
-#     for y in range(L):
-#         for x in range(L):
-#             spin = get_spin(config, x, y)
-#             is_horizontal = (x + y) % 2 == 0
-
-#             if is_horizontal:
-#                 left = get_spin(config, periodic_x(x - 2), y)
-#                 right = get_spin(config, periodic_x(x + 2), y)
-#                 E -= J2 * spin * left
-#                 E -= J2 * spin * right
-
-#                 up_left = get_spin(config, periodic_x(x - 2), periodic_y(y - 2))
-#                 up_right = get_spin(config, periodic_x(x + 2), periodic_y(y - 2))
-#                 down_left = get_spin(config, periodic_x(x - 2), periodic_y(y + 2))
-#                 down_right = get_spin(config, periodic_x(x + 2), periodic_y(y + 2))
-
-#                 E -= J1  * spin * up_left
-#                 E -= J1 * spin * up_right
-#                 E -= J1 * spin * down_left
-#                 E -= J1 * spin * down_right
-#             else:
-#                 up = get_spin(config, x, periodic_y(y - 2))
-#                 down = get_spin(config, x, periodic_y(y + 2))
-#                 E -= J2 * spin * up
-#                 E -= J2 * spin * down
-
-#                 left_up = get_spin(config, periodic_x(x - 2), periodic_y(y - 2))
-#                 right_up = get_spin(config, periodic_x(x + 2), periodic_y(y - 2))
-#                 left_down = get_spin(config, periodic_x(x - 2), periodic_y(y + 2))
-#                 right_down = get_spin(config, periodic_x(x + 2), periodic_y(y + 2))
-
-#                 E -= J1 * spin * left_up
-#                 E -= J1 * spin * right_up
-#                 E -= J1 * spin * left_down
-#                 E -= J1 * spin * right_down
-
-#     return E / 2 # bo oddziaływania spinow np. 1 - 2, 2 - 1 sa liczone dwa razy
+  return E / 2 # bo oddziaływania spinow np. 1 - 2, 2 - 1 sa liczone dwa razy
 
 def calculate_magnetization(config):
-    mx, my = 0, 0
-    # magnetyzacja nie jest normalizowana
-    for y in range(L):
-        for x in range(L):
-            spin = get_spin(config, x, y)
-            if (x + y) % 2 == 0:
-                mx += spin
-            else:
-                my += spin
-    return mx, my
+  mx, my = 0, 0
+
+  for i in range(len(config)):
+    spin = config[i]
+    if i % 2 == 0:
+      mx += spin
+    else:
+      my += spin
+
+  return mx, my
 
 
 data = []
-J1 = 1.0
+J1 = 0.0
 J2 = 1.0
-beta = 3.0
+beta = 1.0
 
 smag_y = 0
 smag_x = 0
 Z = 0
 
 for config in all_configs:
-    E = calculate_energy(config, J1, J2)
-    mx, my = calculate_magnetization(config)
-    weight = np.exp(-beta * E)
+  E = calculate_energy(config, J1, J2)
+  mx, my = calculate_magnetization(config)
+  weight = np.exp(-beta * E)
 
-    smag_x += weight * abs(mx)
-    smag_y += weight * abs(my)
-    Z += weight
-    # M_abs = np.sqrt(mx**2 + my**2) # jako dlugosc wektora
-    data.append((config, E, mx, my, weight))
+  smag_x += weight * abs(mx)
+  smag_y += weight * abs(my)
+  Z += weight
+  # M_abs = np.sqrt(mx**2 + my**2) # jako dlugosc wektora
+  data.append((config, E, mx, my, weight))
 
 mx_abs = smag_x / (2*L*Z)
 my_abs = smag_y / (L*Z)
@@ -181,7 +149,7 @@ with open("config_data.txt", "w") as f:
     f.write("config E mx my weight Z\n")
     for config, E, mx, my, weight in data:
         config_str = " ".join(map(str, config))
-        f.write(f"{config_str} {E:.3f} {mx} {my} {weight:.6e} {Z:.6e}\n")
+        f.write(f"[{config_str}] {E:.3f} {mx} {my} {weight:.6e} {Z:.6e}\n")
 
 # # srednie wartosci
 # avg_mx = sum(mx * w for _, _, mx, _, w in data) / Z
@@ -192,13 +160,13 @@ with open("config_data.txt", "w") as f:
 
 ####--------------------------------------------------------------
 ### VISUALIZATION
-# print(all_configs[190_046]) # wektor konfiguracyjny
+# print(all_configs[0]) # wektor konfiguracyjny
 
 # cell_w = 100/L;
 # cell_h = 200/L;
 
-# target_config = all_configs[1156]
-# print(len(target_config))
+# target_config = all_configs[0]
+# # print(len(target_config))
 
 # vis_spin_x_start = []
 # vis_spin_y_start = []
