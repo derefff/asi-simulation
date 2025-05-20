@@ -22,8 +22,13 @@ def draw_configuartion(config):
 def coord_to_index(x,y):
   return y * Lx + x
 
-def periodic_x_ByIndex(i):
-  return (i + Lx) % Lx # L=3, i-> 0-2: (-2 + 6) % 6 = 4 % 6 = 4
+# def periodic_x_ByIndex(i):
+#   return (i + Lx) % Lx # L=3, i-> 0-2: (-2 + 6) % 6 = 4 % 6 = 4
+def periodic_x_ByIndex(i, shift):
+    x = i % Lx
+    y = i // Lx
+    new_x = (x + shift + Lx) % Lx
+    return coord_to_index(new_x, y)
 
 def periodic_x(x,n): # by x coordinate
   if n > 0:
@@ -60,7 +65,7 @@ def calculateEnergy(config, J2=0.0, J1 = 0.0):
       # pionowy
       spin = config[spinIndex]
       x = spinIndex % Lx
-      y = spinIndex // Ly
+      y = spinIndex // Lx
       upperSpinIndex = coord_to_index(x, periodic_y(y,2))
       upperSpin = config[upperSpinIndex]
       bottomSpinIndex = coord_to_index(x, periodic_y(y,-2))
@@ -72,7 +77,7 @@ def calculateEnergy(config, J2=0.0, J1 = 0.0):
       if J2_DEBUG:
         ##pojedynczy przypadek dla oddziaływania J2
         print("------")
-        print(f" J2 spin pionowy {spinIndex}({x},{y}), sąsiedzi góra {upperSpinIndex}, dół {bottomSpinIndex}")
+        print(f" J2 spin pionowy {spinIndex}({x},{y}), sąsiedzi góra {upperSpinIndex}, dół {bottomSpinIndex} --> {coord_to_index(x,y)}")
         #Energia tutaj będzie razy 2  przez powtarzalne odziaływania
         print(f" E = {E} ---->> {J2 * spin * upperSpin} i {spin * bottomSpin}")
 
@@ -103,10 +108,10 @@ def calculateEnergy(config, J2=0.0, J1 = 0.0):
       # poziomy
       spin = config[spinIndex]
       x = spinIndex % Lx
-      y = spinIndex // Ly
-      rightSpinIndex = periodic_x_ByIndex(spinIndex + 2)
+      y = spinIndex // Lx
+      rightSpinIndex = periodic_x_ByIndex(spinIndex, + 2)
       rightSpin = config[rightSpinIndex]
-      leftSpinIndex = periodic_x_ByIndex(spinIndex - 2)
+      leftSpinIndex = periodic_x_ByIndex(spinIndex, - 2)
       leftSpin = config[leftSpinIndex]
 
       E -= J2 * spin * rightSpin
@@ -115,7 +120,7 @@ def calculateEnergy(config, J2=0.0, J1 = 0.0):
       if J2_DEBUG:
         ##pojedynczy przypadek dla oddziaływania J2
         print("------")
-        print(f" J2 spin pionowy {spinIndex}({x},{y}), sąsiedzi prawo {rightSpinIndex}, lewo {leftSpinIndex}")
+        print(f" J2 spin poziomy {spinIndex}({x},{y}), sąsiedzi prawo {rightSpinIndex}, lewo {leftSpinIndex}  --> {coord_to_index(x,y)}")
         #Energia tutaj będzie *2 przez powtarzalne odziaływania
         print(f" E = {E} ---->> {J2 * spin * rightSpin} i {spin * leftSpin}")
 
@@ -161,7 +166,8 @@ draw_configuartion(configuration)
 
 J2 = 1.0 # krótsze
 J1 = 0.0 # dłuższe
-beta = 1
+T = 0.1
+beta = 1.0
 E_calkowite = calculateEnergy(configuration, J2, J1)
 mx, my = calculate_magnetization(configuration)
 weight = np.exp(-beta * E_calkowite)
