@@ -18,18 +18,8 @@ struct spin
   int value; // potentialy use here vector
   bool isVertical;
   // near neighbour like list
-  int neighbourListIndex_J1[2];
-  int neighbourListIndex_J2[4];
-};
-
-struct vertex
-{
-  int id;
-  int spinIndices[4];
-  int neighborIndices[4]; // [0]=up, [1]=right, [2]=bottom, [3]=left
-  int type;
-  int monopoleCharge;
-  double energy;
+  int neighbourListIndex_J1[4];
+  int neighbourListIndex_J2[2];
 };
 
 struct lattice
@@ -37,17 +27,16 @@ struct lattice
   int width;  // cells unit
   int height; // cells unit
   spin* spins;
-  vertex* vertices;
 };
 
 spin* generate_spins(int L)
 {
   // one-dimensional table
-  spin* spins = (spin*)malloc(sizeof(spin) * (L * L));
+  spin* spins = (spin*)malloc(sizeof(spin) * (L * 2 * L));
 
   // int spin_id = 0;
 
-  for (int i = 0; i < L * L; i++)
+  for (int i = 0; i < L * 2 * L; i++)
   {
     // define spin id
     // spins[i].id = spin_id;
@@ -59,36 +48,41 @@ spin* generate_spins(int L)
   }
 
   // generate near neighbour list for each spin
-  for (int j = 0; j < L * L; j++)
+  for (int j = 0; j < L * 2 * L; j++)
   {
-    int row = j / L;      // y
-    int column = (j % L); // x
+    int row = j / (2 * L);      // y
+    int column = (j % (2 * L)); // x
 
     if (spins[j].isVertical)
     {
       // vertical case
       // look for J1 interactions (above and below, periodic)
-      spins[j].neighbourListIndex_J1[0] = (row == 0) ? (L * (L - 1) + column) : (j - L);
-      spins[j].neighbourListIndex_J1[1] = (row == L - 1) ? column : (j + L);
+      spins[j].neighbourListIndex_J2[0] = ((row - 1 + L) % L) * (2 * L) + column;
+      spins[j].neighbourListIndex_J2[1] = ((row + 1) % L) * (2 * L) + column;
+
 
       // look for J2 interactions (left and right, periodic)
-      spins[j].neighbourListIndex_J2[0] = (column == 0) ? (j + (L - 1)) : (j - 1);
-      spins[j].neighbourListIndex_J2[1] = (column == L - 1) ? (j - (L - 1)) : (j + 1);
-      spins[j].neighbourListIndex_J2[2] = spins[j].neighbourListIndex_J2[0] + L;
-      spins[j].neighbourListIndex_J2[3] = spins[j].neighbourListIndex_J2[1] + L;
+      spins[j].neighbourListIndex_J1[0] = row * (2 * L) + (column - 2 + 2 * L) % (2 * L);
+      spins[j].neighbourListIndex_J1[1] = row * (2 * L) + (column + 2) % (2 * L);
+      spins[j].neighbourListIndex_J1[2] = ((row - 1 + L) % L) * (2 * L) + (column - 2 + 2 * L) % (2 * L);
+      spins[j].neighbourListIndex_J1[3] = ((row + 1) % L) * (2 * L) + (column + 2) % (2 * L);
+
     }
     else
     {
       // horizontal case
       // look for J1 interactions (left and right, periodic)
-      spins[j].neighbourListIndex_J1[0] = (column <= 1) ? (row * L) + (L - (2 - column)) : (j - 2);
-      spins[j].neighbourListIndex_J1[1] = (column >= L - 2) ? (row * L) + (column % 2) : (j + 2);
+      // spins[j].neighbourListIndex_J2[0] = (column <= 1) ? (row * (2 * L)) + (L - (2 - column)) : (j - 2);
+      // spins[j].neighbourListIndex_J2[1] = (column >= L - 2) ? (row * L) + (column % 2) : (j + 2);
+      spins[j].neighbourListIndex_J2[0] = row * (2 * L) + (column - 2 + 2 * L) % (2 * L);
+      spins[j].neighbourListIndex_J2[1] = row * (2 * L) + (column + 2) % (2 * L);
+
 
       // look for J2 interactions (above and below, periodic)
-      spins[j].neighbourListIndex_J2[0] = (row == 0) ? (L * (L - 1) + column + 1) : (j - L + 1);
-      spins[j].neighbourListIndex_J2[1] = (row == 0) ? (L * (L - 1) + column - 1) : (j - L - 1);
-      spins[j].neighbourListIndex_J2[2] = (row == L - 1) ? (column + 1) : (j + L + 1);
-      spins[j].neighbourListIndex_J2[3] = (row == L - 1) ? (column - 1) : (j + L - 1);
+      spins[j].neighbourListIndex_J1[0] = ((row - 1 + L) % L) * (2 * L) + (column - 1 + 2 * L) % (2 * L);
+      spins[j].neighbourListIndex_J1[1] = ((row - 1 + L) % L) * (2 * L) + (column + 1) % (2 * L);
+      spins[j].neighbourListIndex_J1[2] = ((row + 1) % L) * (2 * L) + (column - 1 + 2 * L) % (2 * L);
+      spins[j].neighbourListIndex_J1[3] = ((row + 1) % L) * (2 * L) + (column + 1) % (2 * L);
     }
 
     // std::cout << row << "," << column << "\n"; // debug info
@@ -97,149 +91,38 @@ spin* generate_spins(int L)
   return spins;
 }
 
-vertex* generate_vertex(int L, spin* spins)
-{
-  int num_vertices = L * L;
-  vertex* vertices = (vertex*)malloc(sizeof(vertex) * num_vertices);
-
-  for (int i = 0; i < num_vertices; i++)
-  {
-    int row = i / L;
-    int col = i % L;
-
-    vertex v;
-    v.id = i;
-
-    // top, left, bottom, right
-
-    int top_spin_index = ((row == 0) ? (L - 1) : row - 1) * L + col;
-    int bottom_spin_index = row * L + col;
-
-    int left_spin_index = row * L + ((col == 0) ? (L - 1) : col - 1);
-    int right_spin_index = row * L + col;
-
-    // vertical spins -> (i % 2 == 1), horizontal have odd index
-
-    // vertical neighbors
-    while (!spins[top_spin_index].isVertical)
-      top_spin_index = (top_spin_index + 1) % (L * L);
-
-    while (!spins[bottom_spin_index].isVertical)
-      bottom_spin_index = (bottom_spin_index + 1) % (L * L);
-
-    // horziontal neighbors
-    while (spins[left_spin_index].isVertical)
-      left_spin_index = (left_spin_index + 1) % (L * L);
-
-    while (spins[right_spin_index].isVertical)
-      right_spin_index = (right_spin_index + 1) % (L * L);
-
-    v.spinIndices[0] = top_spin_index;
-    v.spinIndices[1] = left_spin_index;
-    v.spinIndices[2] = bottom_spin_index;
-    v.spinIndices[3] = right_spin_index;
-
-    // neihborVvertex
-    for (int d = 0; d < 4; d++)
-      v.neighborIndices[d] = -1;
-
-    // placeholders
-    v.type = -1;
-    v.monopoleCharge = 0;
-    v.energy = 0.0;
-
-    vertices[i] = v;
-  }
-
-  return vertices;
-}
-
 lattice* create_lattice(int L)
 {
   lattice* lat = (lattice*)malloc(sizeof(lattice));
   // Define board size (NxN)
-  lat->width = L;
+  lat->width = 2 * L;
   lat->height = L;
   // Generate spins in a structured grid
   // Store spins in data structure
   lat->spins = generate_spins(L);
-  lat->vertices = generate_vertex(L, lat->spins);
   return lat;
 }
 
-void update_vertices(vertex* vertices, spin* spins, int num_vertices, double J1, double J2)
-{
-  for (int i = 0; i < num_vertices; i++)
-  {
-    vertex* v = &vertices[i];
-
-    // take those 4 spins
-    int s[4];
-    for (int k = 0; k < 4; k++)
-      s[k] = spins[v->spinIndices[k]].value;
-
-    // spins sum -> monopole charge
-    int sum = s[0] + s[1] + s[2] + s[3];
-    v->monopoleCharge = sum;
-
-    // vertex type
-    switch (abs(sum))
-    {
-    case 0:
-      // type I (2 in, 2 out)
-      v->type = 1;
-      break;
-    case 2:
-      // type II (3 in / 1 out)
-      v->type = 2;
-      break;
-    case 4:
-      // type III (4 in or 4 out)
-      v->type = 3;
-      break;
-    default:
-      // error or unknown
-      v->type = -1;
-      break;
-    }
-
-    // local energy ... not sure if correct
-    v->energy = -J1 * (s[0] * s[2] + s[1] * s[3]) - J2 * (s[0] * s[1] + s[0] * s[3] + s[2] * s[1] + s[2] * s[3]);
-  }
-}
-
-int count_monopoles(vertex* vertices, int num_vertices)
-{
-  int count = 0;
-  for (int i = 0; i < num_vertices; i++)
-    if (abs(vertices[i].monopoleCharge) > 0)
-      count++;
-  return count;
-}
-
-// previously there was T in argument
-double compute_energy_difference(lattice* lat, int spin_index, double J1, double J2, physics::vector* B)
+double compute_energy_difference(lattice* lat, int spin_index, double J1, double J2, double T)
 {
   spin s = lat->spins[spin_index];
   // int sum_neighbors = 0;
   int sum_J1 = 0;
   int sum_J2 = 0;
 
-  for (int i = 0; i < 2; i++)
-    sum_J1 += lat->spins[s.neighbourListIndex_J1[i]].value;
   for (int i = 0; i < 4; i++)
+    sum_J1 += lat->spins[s.neighbourListIndex_J1[i]].value;
+  for (int i = 0; i < 2; i++)
     sum_J2 += lat->spins[s.neighbourListIndex_J2[i]].value;
 
-  double field = s.isVertical ? B->y : B->x;
-
-  return 2 * s.value * (J1 * sum_J1 + J2 * sum_J2 + field);
+  return 2 * s.value * (J1 * sum_J1 + J2 * sum_J2);
 }
 
-void glauber_step(lattice* lat, double J1, double J2, double T, physics::vector* B)
+void glauber_step(lattice* lat, double J1, double J2, double T)
 {
   int random_spin = rand() % (lat->width * lat->height - 1);
 
-  double dE = compute_energy_difference(lat, random_spin, J1, J2, B);
+  double dE = compute_energy_difference(lat, random_spin, J1, J2, T);
   if (dE < 0 || exp(-dE / (Kb * T)) > ((double)rand() / RAND_MAX))
     lat->spins[random_spin].value *= -1;
 }
@@ -260,83 +143,108 @@ physics::vector* compute_magnetization(lattice* lat)
   return M;
 }
 
+void simulate_MT(int L, double J1, double J2, const char* filename) {
+  double T_list[] = {0.1, 0.5, 1.0, 1.4, 1.8, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0};
+  int T_len = 11; // sizeof(T_list) / sizeof(T_list[0]);
+
+  const int steps = 1'000'000;  // liczba kroków MC na T
+
+  // otwieranie pliku do zapisu
+  std::ofstream outfile(filename);
+  if (!outfile) {
+    std::cerr << "Error opening file: " << filename << std::endl;
+    return;
+  }
+
+  outfile << "T\tMx\tMy\n";
+
+  for (int t = 0; t < T_len; t++) {
+    double T = T_list[t];
+
+    // Twórz nową siątkę dla T
+    lattice* board = create_lattice(L);
+
+    double Mx_sum = 0.0;
+    double My_sum = 0.0;
+
+    for (int step = 0; step < steps; step++) {
+      glauber_step(board, J1, J2, T);
+      physics::vector* M = compute_magnetization(board);
+      Mx_sum += fabs(M->x);
+      My_sum += fabs(M->y);
+    }
+
+    double Mx_avg = Mx_sum / steps / ((float(board->width)/2) * board->height);
+    double My_avg = My_sum / steps / ((float(board->width)/2) *  board->height);
+    printf("%lf",((float(board->width)/2) *  board->height));
+
+    outfile << T << '\t' << Mx_avg << '\t' << My_avg << '\n';
+
+    free(board->spins);
+    free(board);
+  }
+
+  outfile.close();
+  std::cout << "zapisano MT do: " << filename << std::endl;
+}
+
+
+
 int main(int argc, char* argv[])
 {
-  const int L = 40;
-  const double J1 = 1.0;
-  const double J2 = 1.0;
-  const double T = 1.8;
-  const int steps = 10'000;
-  // const int equil_steps = 5000; // termalizacja?
-  // const int samples = steps - equil_steps; // steps -> smples
+    const int L = 3;
 
-  // Create output file for phase diagram
-  std::ofstream phase_file("phase_diagram.txt");
-  if (!phase_file)
-  {
-    std::cerr << "Error opening phase_diagram.txt!" << std::endl;
-    return 1;
-  }
+    // Symulacje tylko dla J1
+    simulate_MT(L, 0.3, 0.0, "./wyniki/0.3/J1/SYM_MT_J1_0.3.txt");
+    simulate_MT(L, 0.7, 0.0, "./wyniki/0.7/J1/SYM_MT_J1_0.7.txt");
+    simulate_MT(L, 1.0, 0.0, "./wyniki/1/J1/SYM_MT_J1_1.txt");
+    simulate_MT(L, 1.4, 0.0, "./wyniki/1.4/J1/SYM_MT_J1_1.4.txt");
+    simulate_MT(L, 1.8, 0.0, "./wyniki/1.8/J1/SYM_MT_J1_1.8.txt");
 
-  // External field B(x,y)
-  physics::vector* B = physics::create_vector(0.0, 0.0);
+    // Symulacje tylko dla J2
+    simulate_MT(L, 0.0, 0.3, "./wyniki/0.3/J2/SYM_MT_J2_0.3.txt");
+    simulate_MT(L, 0.0, 0.7, "./wyniki/0.7/J2/SYM_MT_J2_0.7.txt");
+    simulate_MT(L, 0.0, 1.0, "./wyniki/1/J2/SYM_MT_J2_1.txt");
+    simulate_MT(L, 0.0, 1.4, "./wyniki/1.4/J2/SYM_MT_J2_1.4.txt");
+    simulate_MT(L, 0.0, 1.8, "./wyniki/1.8/J2/SYM_MT_J2_1.8.txt");
 
-  int total = 21 * 21;
-  int count = 0;
+    // simulate_MT(L, 0.5, 1.0, "./wyniki/J1J2/SYM_MT_J1J2_05_1.txt");
+    // simulate_MT(L, 1.0, 0.5, "./wyniki/J1J2/SYM_MT_J1J2_1_05.txt");
+    // simulate_MT(L, 1.0, 1.0, "./wyniki/J1J2/SYM_MT_J1J2_1_1.txt");
+    // simulate_MT(L, 0.7, 1.4, "./wyniki/J1J2/SYM_MT_J1J2_07_14.txt");
 
-  // Looping over B vector
-  for (B->x = -1.0; B->x <= 1.01; B->x += 0.1)
-  {
-    for (B->y = -1.0; B->y <= 1.01; B->y += 0.1)
-    {
 
-      // Create fresh lattice for each B
-      lattice* board = create_lattice(L);
+  // const int L = 50;
+  // const double J1 = 1.0;
+  // const double J2 = 1.0;
+  // const double T = 1.8;
 
-      // run simulaation
-      for (int step = 0; step < steps; step++)
-      {
-        glauber_step(board, J1, J2, T, B);
-        update_vertices(board->vertices, board->spins, L * L, J1, J2);
-      }
+  // // external field B(x,y)
+  // physics::vector* B = physics::create_vector(0.0, 0.0);
+  // // physics::vector* M = physics::create_vector(0.0, 0.0);
 
-      double Mx = 0.0, My = 0.0;
-      int monopole_total = 0;
+  // lattice* board = create_lattice(L);
 
-      for (int step = 0; step < steps; step++)
-      {
-        glauber_step(board, J1, J2, T, B);
-        update_vertices(board->vertices, board->spins, L * L, J1, J2);
+  // std::ofstream outfile("magnetization_data.txt");
+  // if (!outfile)
+  // {
+  //   std::cerr << "Error opening file!" << std::endl;
+  //   return 1;
+  // }
 
-        physics::vector* M = compute_magnetization(board);
-        Mx += M->x;
-        My += M->y;
+  // for (int step = 0; step < 10'000; step++)
+  // {
+  //   glauber_step(board, J1, J2, T);
 
-        monopole_total += count_monopoles(board->vertices, L * L);
-      }
+  //   // Total Magnetization
+  //   physics::vector* magnetization = compute_magnetization(board);
+  //   outfile << step << '\t' << magnetization->x << '\t' << magnetization->y << '\n';
+  // }
 
-      // avg variables
-      double avg_Mx = Mx / steps;
-      double avg_My = My / steps;
-      double avg_monopole_density = (double)monopole_total / (steps * L * L);
+  // outfile.close();
+  // std::cout << "Magnetization data saved to magnetization_data.txt" << std::endl;
+  //
 
-      // save to phase_diagram.txt file
-      phase_file << B->x << '\t' << B->y << '\t' << avg_Mx << '\t' << avg_My << '\t' << avg_monopole_density << '\n';
-
-      count++;
-      int progress = (100 * count) / total;
-      std::cout << "\rProgress: " << progress << "%     " << std::flush;
-
-      // Free memory for this run
-      free(board->spins);
-      free(board->vertices);
-      free(board);
-    }
-    phase_file << "\n";
-  }
-
-  phase_file.close();
-  std::cout << "Phase diagram data saved to phase_diagram.txt" << std::endl;
   return 0;
 }
 
@@ -351,3 +259,34 @@ int main(int argc, char* argv[])
 // //waga z rozkladu boltmzana -> prawdopodobienstwo mikrostanu
 // zastanowic sie co robia oddzialywania (samo j1 lub sammo j2) -> jeden z podrozdzialow
 
+// 1. Create simulation board
+// a) Define board size (NxN)
+// b) Generate spins in a structured grid
+// c) Store spins in data structure
+
+// 2. Initialize spins
+// a) Assign each spin a random orientation (+1 or -1)
+// b) Optionally: Implement different initial states (random, ordered, etc.)
+// 2.1. Make neighbor list
+// a) Identify nearest neighbors (J1 interactions)
+// b) Identify next-nearest neighbors (J2 interactions)
+// c) Store neighbor relationships efficiently (e.g., adjacency list, array indices)
+
+// 4. Simulation loop
+// a) Pick a random spin
+// b) Compute energy difference ΔE using Glauber algorithm
+// c) Decide whether to flip the spin (using probability function)
+// d) Repeat for a fixed number of Monte Carlo steps
+
+// 5. Data collection & analysis
+// a) Measure total system energy at intervals
+// b) Track monopole density / correlation functions
+// c) Store results in a file for plotting
+
+// 6. Visualization (optional)
+// a) Output the spin configurations at different time steps
+// b) Generate heatmaps / graphs of magnetization / energy
+
+// 7. Finalize simulation
+// a) Save the final state
+// b) Close files / free memory
