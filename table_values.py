@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
 
-L = 3
+L = 2
 Ly = L
 Lx = 2*L
 total_cells = 2*L*L
@@ -16,6 +16,7 @@ print(f"Generating {2 ** (2 * L * L) } configurations")
 # all_configs = np.array(list(product([-1, 1], repeat=total_cells)), dtype=np.int8) # przeczytac powyzszy komentarz
 
 all_configs = list(product([-1, 1], repeat=total_cells)) # to można stosować dla L = 3 i można rysować z kodem
+len_configs = len(all_configs)
 
 # oblicz magnetyzacje RAZ!
 precomputed_magnetization = []
@@ -33,17 +34,23 @@ def periodic_x_ByIndex(i, shift):
     return coord_to_index(new_x, y)
 
 
-def periodic_x(x,n): # by x coordinate
-  if n > 0:
-    return (x + 2) % Lx
-  else:
-    return (x - 2 + Lx) % Lx
+# def periodic_x(x,n): # by x coordinate
+#   if n > 0:
+#     return (x + 2) % Lx
+#   else:
+#     return (x - 2 + Lx) % Lx
 
-def periodic_y(y,n): # by coordinate
-  if n < 0:
-    return (y + 2) % Ly
-  else:
-    return (y - 2 +Ly) % Ly
+# def periodic_y(y,n): # by coordinate
+#   if n < 0:
+#     return (y + 2) % Ly
+#   else:
+#     return (y - 2 +Ly) % Ly
+
+def periodic_x(x, n):
+    return (x + n + Lx) % Lx
+
+def periodic_y(y, n):
+    return (y + n + Ly) % Ly
 
 def calculate_energy(config, J1, J2):
   E = 0.0
@@ -63,10 +70,10 @@ def calculate_energy(config, J1, J2):
 
       # print(x,y)
       if J1 != 0:
-        up_left = config[coord_to_index(periodic_x(x,-2), periodic_y(y,2))]
-        up_right = config[coord_to_index(periodic_x(x,2), periodic_y(y,2))]
-        down_left = config[coord_to_index(periodic_x(x,-2), periodic_y(y,-2))]
-        down_right = config[coord_to_index(periodic_x(x,2), periodic_y(y,-2))]
+        up_left = config[coord_to_index(periodic_x(x,-1), periodic_y(y,0))]
+        up_right = config[coord_to_index(periodic_x(x,1), periodic_y(y,0))]
+        down_left = config[coord_to_index(periodic_x(x,-1), periodic_y(y,-1))]
+        down_right = config[coord_to_index(periodic_x(x,1), periodic_y(y,-1))]
 
         E -= J1 * spin * up_left
         E -= J1 * spin * up_right
@@ -76,17 +83,17 @@ def calculate_energy(config, J1, J2):
     else:
       spin =  config[spinIndex]
       if J2 != 0:
-        up = config[coord_to_index(x, periodic_y(y,2))]
-        down = config[coord_to_index(x, periodic_y(y,-2))]
+        up = config[coord_to_index(x, periodic_y(y,1))]
+        down = config[coord_to_index(x, periodic_y(y,-1))]
 
         E -= J2 * spin * up
         E -= J2 * spin * down
 
       if J1 != 0:
-        left_up = config[coord_to_index(periodic_x(x,-2), periodic_y(y,2))]
-        right_up = config[coord_to_index(periodic_x(x,2), periodic_y(y,2))]
-        left_down = config[coord_to_index(periodic_x(x,-2), periodic_y(y,-2))]
-        right_down = config[coord_to_index(periodic_x(x,2), periodic_y(y,-2))]
+        left_up = config[coord_to_index(periodic_x(x,-1), periodic_y(y,0))]
+        right_up = config[coord_to_index(periodic_x(x,1), periodic_y(y,0))]
+        left_down = config[coord_to_index(periodic_x(x,-1), periodic_y(y,-1))]
+        right_down = config[coord_to_index(periodic_x(x,1), periodic_y(y,-1))]
 
         E -= J1 * spin * left_up
         E -= J1 * spin * right_up
@@ -94,6 +101,80 @@ def calculate_energy(config, J1, J2):
         E -= J1 * spin * right_down
 
   return E / 2 # bo oddziaływania spinow np. 1 - 2, 2 - 1 sa liczone dwa razy
+
+def count_interactions(config):
+  J2_sum  = 0
+  J1_sum  = 0
+
+  for spinIndex in range(len(config)):
+    # sprawdzam czy spin jest poziomy czy pionowy
+    if not spinIndex % 2 == 0:
+      # pionowy
+      spin = config[spinIndex]
+      x = spinIndex % Lx
+      y = spinIndex // Lx
+      upperSpin = config[coord_to_index(x, periodic_y(y,1))]
+
+      if spin == upperSpin:
+        J2_sum -= 1
+
+      if not spin == upperSpin:
+        J2_sum += 1
+
+      upperLeftSpin = config[coord_to_index(periodic_x(x,-1), periodic_y(y,0))]
+      upperRightSpin = config[coord_to_index(periodic_x(x,1), periodic_y(y, 0))]
+
+      if spin == upperLeftSpin:
+        J1_sum -= 1
+
+      if not spin == upperLeftSpin:
+        J1_sum += 1
+
+      if spin == upperRightSpin:
+        J1_sum -= 1
+
+      if not spin == upperRightSpin:
+        J1_sum += 1
+
+    else:
+      # poziomy
+      spin = config[spinIndex]
+      x = spinIndex % Lx
+      y = spinIndex // Lx
+      rightSpin = config[periodic_x_ByIndex(spinIndex, + 2)]
+
+      if spin == rightSpin:
+        J2_sum -= 1
+
+      if not spin == rightSpin:
+        J2_sum += 1
+
+      upperLeftSpin = config[coord_to_index(periodic_x(x, -1), periodic_y(y,0))]
+      upperRightSpin = config[coord_to_index(periodic_x(x,1), periodic_y(y,0))]
+
+      if spin == upperLeftSpin:
+        J1_sum -= 1
+
+      if not spin == upperLeftSpin:
+        J1_sum += 1
+
+      if spin == upperRightSpin:
+        J1_sum -= 1
+
+      if not spin == upperRightSpin:
+        J1_sum += 1
+
+  return J1_sum, J2_sum
+
+def count_all_interactions():
+  J1_sum_avg = 0;
+  J2_sum_avg = 0;
+  for config in all_configs:
+    J1_sum, J2_sum = count_interactions(config)
+    J1_sum_avg += J1_sum;
+    J2_sum_avg += J2_sum;
+
+  return (J1_sum_avg / len_configs ), (J2_sum_avg / len_configs)
 
 def calculate_magnetization(config):
   mx, my = 0, 0
@@ -145,19 +226,23 @@ def compute_MT(J1, J2, filename):
 
         computation_results.append((T, mx_avg, my_avg))
 
-        print(T,smag_x, mx_avg) 
-        
+        print(f" T:{T} smag_x: {smag_x}, mx_avg:{mx_avg}, my_avg: {my_avg}")
+
     np.savetxt(filename, computation_results, header="T Mx My", comments="")
             # f.write(f"{T} {mx_avg:.6f} {my_avg:.6f}\n")
 
 # Liczenie dla trzech przypadków
 
 #należy się upewnić że podana ścieżka(foldery) filename jest stworzona
-# compute_MT(J1=1.0, J2=0.0, filename="./MT_J1.txt")  # tylko J1
-# compute_MT(J1=0.0, J2=1.0, filename="./MT_J2.txt")  # tylko J2
+print("\n J1 = 1")
+compute_MT(J1=1.0, J2=0.0, filename="./MT_J1.txt")  # tylko J1
 
-compute_MT(J1=1.0, J2=0.0, filename="./wyniki/1/J1/MT_J1.txt")  # tylko J1
-compute_MT(J1=0.0, J2=1.0, filename="./wyniki/1/J2/MT_J2.txt")  # tylko J2
+J1_sum_avg , J2_sum_avg = count_all_interactions()
+print(f" J1 -> {J1_sum_avg},\t J2 -> {J2_sum_avg}")
+# compute_MT(J1=1.0, J2=0.0, filename="./wyniki/1/J1/MT_J1.txt")  # tylko J1
+print("\n J2 = 1")
+# compute_MT(J1=0.0, J2=1.0, filename="./wyniki/1/J2/MT_J2.txt")  # tylko J2
+compute_MT(J1=0.0, J2=1.0, filename="./MT_J2.txt")  # tylko J2
 # compute_MT(J1=0.3, J2=0.0, filename="./wyniki/0.3/J1/MT_J1.txt")  # tylko J1
 # compute_MT(J1=1.7, J2=0.0, filename="./wyniki/0.7/J1/MT_J1.txt")  # tylko J1
 # compute_MT(J1=1.4, J2=0.0, filename="./wyniki/1.4/J1/MT_J1.txt")  # tylko J1
@@ -213,67 +298,3 @@ compute_MT(J1=0.0, J2=1.0, filename="./wyniki/1/J2/MT_J2.txt")  # tylko J2
 
 # print("Funkcja podziału Z:", Z)
 # print("Średnia magnetyzacja:", avg_mx, avg_my)
-
-####--------------------------------------------------------------
-### VISUALIZATION - rozmieszczenie wektorów na siatce
-# print(all_configs[0]) # wektor konfiguracyjny
-
-# cell_w = 100/L;
-# cell_h = 200/L;
-
-# target_config = all_configs[0]
-# # print(len(target_config))
-
-# vis_spin_x_start = []
-# vis_spin_y_start = []
-# vis_spin_x_finish = []
-# vis_spin_y_finish = []
-
-# # zapis położenia poszeczgolnych spinow
-# for i in range(len(target_config)):
-#   x = i % (2 * L)
-#   y = i //(2 * L)
-
-#   if i % 2 == 0:
-#     if target_config[i] > 0:
-#       vis_spin_x_start.append(x*cell_w)
-#       vis_spin_x_finish.append(x*cell_w+ cell_w*0.8)
-#       # print("prawo")
-#     else:
-#       vis_spin_x_start.append(x*cell_w+ cell_w*0.8)
-#       vis_spin_x_finish.append(x*cell_w)
-#       # print("lewo")
-
-#     vis_spin_y_start.append(y* cell_h + cell_h/2)
-#     vis_spin_y_finish.append(y* cell_h + cell_h/2)
-
-#   else:
-#     vis_spin_x_start.append(x*cell_w + cell_w/2)
-#     vis_spin_x_finish.append(x*cell_w + cell_w/2)
-
-#     if target_config[i] > 0:
-#       vis_spin_y_start.append(y* cell_h)
-#       vis_spin_y_finish.append(y* cell_h+ cell_h*0.5 - 10)
-#       # print("gora")
-#     else:
-#       vis_spin_y_start.append(y* cell_h+ cell_h*0.5 - 10)
-#       vis_spin_y_finish.append(y* cell_h)
-#       # print("dol")
-
-# plt.figure(figsize=(6, 10))
-
-# for x_start, y_start, x_finish, y_finish in zip(vis_spin_x_start, vis_spin_y_start, vis_spin_x_finish, vis_spin_y_finish):
-#     plt.arrow(x_start, y_start, x_finish - x_start, y_finish - y_start, head_width=1.5, head_length=1, fc='black', ec='black')
-
-# # plt.xlim(-1, 4)
-# plt.ylim(-20, 200)
-# plt.title('Wizualizacja konfiguracji')
-# plt.xlabel('X')
-# plt.ylabel('Y')
-
-# # Set equal aspect ratio
-# # plt.axis('equal')
-
-# plt.grid()
-# plt.show()
- ### END_VISUALIZATION
