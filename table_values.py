@@ -113,67 +113,55 @@ def count_interactions(config):
       spin = config[spinIndex]
       x = spinIndex % Lx
       y = spinIndex // Lx
-      upperSpin = config[coord_to_index(x, periodic_y(y,1))]
+      upperSpinIndex = coord_to_index(x, periodic_y(y,1))
+      upperSpin = config[upperSpinIndex]
 
-      if spin == upperSpin:
-        J2_sum -= 1
+      # if spin == upperSpin:
+      J2_sum += spin * upperSpin
 
-      if not spin == upperSpin:
-        J2_sum += 1
+      # if not spin == upperSpin:
+      #   J2_sum += spin * upperSpin
 
-      upperLeftSpin = config[coord_to_index(periodic_x(x,-1), periodic_y(y,0))]
-      upperRightSpin = config[coord_to_index(periodic_x(x,1), periodic_y(y, 0))]
 
-      if spin == upperLeftSpin:
-        J1_sum -= 1
+      upperLeftSpinIndex = coord_to_index(periodic_x(x,-1), periodic_y(y,0))
+      upperLeftSpin = config[upperLeftSpinIndex]
+      upperRightSpinIndex = coord_to_index(periodic_x(x,1), periodic_y(y, 0))
+      upperRightSpin = config[upperRightSpinIndex]
 
-      if not spin == upperLeftSpin:
-        J1_sum += 1
+      bottomLeftSpinIndex = coord_to_index(periodic_x(x,-1), periodic_y(y,-1))
+      bottomLeftSpin = config[bottomLeftSpinIndex]
+      bottomRightSpinIndex = coord_to_index(periodic_x(x,1), periodic_y(y,-1))
+      bottomRightSpin = config[bottomRightSpinIndex]
 
-      if spin == upperRightSpin:
-        J1_sum -= 1
-
-      if not spin == upperRightSpin:
-        J1_sum += 1
+      J1_sum += spin * upperLeftSpin * -1
+      J1_sum += spin * upperRightSpin
+      J1_sum += spin * bottomLeftSpin
+      J1_sum += spin * bottomRightSpin * -1
 
     else:
       # poziomy
       spin = config[spinIndex]
       x = spinIndex % Lx
       y = spinIndex // Lx
-      rightSpin = config[periodic_x_ByIndex(spinIndex, + 2)]
+      rightSpinIndex = periodic_x_ByIndex(spinIndex, + 2)
+      rightSpin = config[rightSpinIndex]
 
-      if spin == rightSpin:
-        J2_sum -= 1
-
-      if not spin == rightSpin:
-        J2_sum += 1
-
-      upperLeftSpin = config[coord_to_index(periodic_x(x, -1), periodic_y(y,0))]
-      upperRightSpin = config[coord_to_index(periodic_x(x,1), periodic_y(y,0))]
-
-      if spin == upperLeftSpin:
-        J1_sum -= 1
-
-      if not spin == upperLeftSpin:
-        J1_sum += 1
-
-      if spin == upperRightSpin:
-        J1_sum -= 1
-
-      if not spin == upperRightSpin:
-        J1_sum += 1
+      J2_sum += spin*rightSpin
 
   return J1_sum, J2_sum
 
+
 def count_all_interactions():
-  J1_sum_avg = 0;
-  J2_sum_avg = 0;
+  J1_sum_avg = 0
+  J2_sum_avg = 0
   for config in all_configs:
     J1_sum, J2_sum = count_interactions(config)
-    J1_sum_avg += J1_sum;
-    J2_sum_avg += J2_sum;
+    print(f" J1_sum -> {J1_sum}  J2_sum -> {J2_sum}")
+    J1_sum_avg += J1_sum
+    J2_sum_avg += J2_sum
+    print(f" J1_sum_AVG -> {J1_sum_avg}  J2_sum_AVG -> {J2_sum_avg}")
 
+  print("----------------")
   return (J1_sum_avg / len_configs ), (J2_sum_avg / len_configs)
 
 def calculate_magnetization(config):

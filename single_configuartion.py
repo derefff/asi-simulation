@@ -2,10 +2,10 @@ import numpy as np
 # import matplotlib.pyplot as plt
 
 # włączenie print() informacji o węzłach
-J1_DEBUG = True
-J2_DEBUG = True
+J1_DEBUG = False
+J2_DEBUG = False
 
-J1_SUM_DEBUG = False
+J1_SUM_DEBUG = True
 J2_SUM_DEBUG = False
 # wymiar siatki (L=2 to 2 * 2 * 2)
 Ly = 3
@@ -162,6 +162,7 @@ def calculateEnergy(config, J2=0.0, J1 = 0.0):
 
   return E/2
 
+#tej funkcji nie uzywam
 def count_interactions_J1_J2(config):
     J1_sum = 0
     J2_sum = 0
@@ -240,7 +241,6 @@ def count_interactions(config):
   J2_sum  = 0
   J1_sum  = 0
 
-
   for spinIndex in range(len(config)):
     # sprawdzam czy spin jest poziomy czy pionowy
     if not spinIndex % 2 == 0:
@@ -251,15 +251,16 @@ def count_interactions(config):
       upperSpinIndex = coord_to_index(x, periodic_y(y,1))
       upperSpin = config[upperSpinIndex]
 
-      if spin == upperSpin:
-        J2_sum -= 1
 
-      if not spin == upperSpin:
-        J2_sum += 1
+      J2_sum += spin * upperSpin
 
       if J2_SUM_DEBUG:
         ##pojedynczy przypadek dla oddziaływania J2
-        print("no tak")
+        print("-----------")
+        print(f"----J2 = {J2_sum} ---------")
+        print(f"przypadek pionowy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, upperSpin {upperSpinIndex} -> {upperSpin}")
+        print(f"do J2_sum -> {spin * upperSpin}")
 
 
       upperLeftSpinIndex = coord_to_index(periodic_x(x,-1), periodic_y(y,0))
@@ -267,21 +268,39 @@ def count_interactions(config):
       upperRightSpinIndex = coord_to_index(periodic_x(x,1), periodic_y(y, 0))
       upperRightSpin = config[upperRightSpinIndex]
 
-      if spin == upperLeftSpin:
-        J1_sum -= 1
+      bottomLeftSpinIndex = coord_to_index(periodic_x(x,-1), periodic_y(y,-1))
+      bottomLeftSpin = config[bottomLeftSpinIndex]
+      bottomRightSpinIndex = coord_to_index(periodic_x(x,1), periodic_y(y,-1))
+      bottomRightSpin = config[bottomRightSpinIndex]
 
-      if not spin == upperLeftSpin:
-        J1_sum += 1
+      J1_sum += spin * upperLeftSpin * -1
+      J1_sum += spin * upperRightSpin
+      J1_sum += spin * bottomLeftSpin
+      J1_sum += spin * bottomRightSpin * -1
 
-      if spin == upperRightSpin:
-        J1_sum -= 1
-
-      if not spin == upperRightSpin:
-        J1_sum += 1
 
       if J1_SUM_DEBUG:
         ##pojedynczy przypadek dla oddziaływania J1
-        print("------")
+        print("---------------------------------")
+        print(f"----J1 = {J1_sum} ---------")
+        print(f"przypadek pionowy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, upperLeftSpin {upperLeftSpinIndex } -> {upperLeftSpin}")
+        print(f"do J1_sum -> {spin * upperLeftSpin * -1} (mnożone *-1)")
+
+        print(" ")
+        print("-----------")
+        print(f"przypadek pionowy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, upperRightSpin {upperRightSpinIndex} -> {upperRightSpin}")
+        print(f"do J1_sum -> {spin * upperRightSpin}")
+        print(" ")
+        print("-----------")
+        print(f"przypadek pionowy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, bottomLeftSpin {bottomLeftSpinIndex} -> {bottomLeftSpin}")
+        print(f"do J1_sum -> {spin * bottomLeftSpin}")
+        print("-----------")
+        print(f"przypadek pionowy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, bottomRightSpin {bottomRightSpinIndex} -> {bottomRightSpin}")
+        print(f"do J1_sum -> {spin * bottomRightSpin * -1} (mnożone *-1)")
 
     else:
       # poziomy
@@ -291,42 +310,24 @@ def count_interactions(config):
       rightSpinIndex = periodic_x_ByIndex(spinIndex, + 2)
       rightSpin = config[rightSpinIndex]
 
-      if spin == rightSpin:
-        J2_sum -= 1
-
-      if not spin == rightSpin:
-        J2_sum += 1
-
+      J2_sum += rightSpin*spin
 
       if J2_SUM_DEBUG:
         ##pojedynczy przypadek dla oddziaływania J2
-        print("------")
-
-      upperLeftSpinIndex = coord_to_index(periodic_x(x, -1), periodic_y(y,0))
-      upperLeftSpin = config[upperLeftSpinIndex]
-
-      upperRightSpinIndex = coord_to_index(periodic_x(x,1), periodic_y(y,0))
-      upperRightSpin = config[upperRightSpinIndex]
+        print("-----------")
+        print(f"----J2 = {J2_sum} ---------")
+        print(f"przypadek poziomy {spinIndex} ( {x} ,{y})")
+        print(f" spin -> {spin}, upperSpin {rightSpinIndex} -> {rightSpin}")
+        print(f"do J2_sum -> {spin * rightSpin}")
 
 
-      if spin == upperLeftSpin:
-        J1_sum -= 1
+      # dla poziomego spinu nie licz, J_1
 
-      if not spin == upperLeftSpin:
-        J1_sum += 1
-
-      if spin == upperRightSpin:
-        J1_sum -= 1
-
-      if not spin == upperRightSpin:
-        J1_sum += 1
-
-
-      if J1_DEBUG:
-        ##pojedynczy przypadek dla oddziaływania J1
-        print("------")
 
   print(f" J2 -> {J2_sum}, J1 -> {J1_sum}")
+  J2 = 1.0 # krótsze
+  J1 = 0.0 # dłuższe
+  print(f" E = { - J1 * J1_sum - J2*J2_sum}")
 
 
 
